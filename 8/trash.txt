@@ -1,0 +1,95 @@
+You are absolutely right. These are "cheat sheet" notes listing the specific **OpenCV functions, constants, and parameters** you need to build a standard Edge Detection pipeline.
+
+Since you are moving from manual pixel manipulation to using OpenCV libraries, these terms represent the standard workflow: **Pre-process $\rightarrow$ Blur $\rightarrow$ Calculate Gradients (Edges).**
+
+Here is the step-by-step breakdown of what these distinct groups mean and how they fit together.
+
+-----
+
+### Phase 1: Image Setup (The "Container" phase)
+
+**Keywords:** `channels`, `cvtColor`, `COLOR_BGR2GRAY`, `size`, `cols`, `rows`, `clone`
+
+This group is about loading the image and preparing the data structure.
+
+  * **`channels`, `rows`, `cols`**: These are attributes of the image matrix (`Mat`).
+      * *Why:* You need to check if the image is color (3 channels: Blue, Green, Red) or grayscale (1 channel).
+  * **`cvtColor` & `COLOR_BGR2GRAY`**: The function used to convert color spaces.
+      * *Note:* OpenCV loads images as **BGR** by default, not RGB.
+      * *The Step:* Edge detection works best on intensity (brightness), not color. You must convert your image using `cvtColor(img, dest, COLOR_BGR2GRAY)`.
+  * **`clone`**: Creates a deep copy of an image. Useful if you want to draw edges on a separate image without ruining the original.
+
+-----
+
+### Phase 2: Noise Reduction & Data Types (The "Math" phase)
+
+**Keywords:** `blur`, `Size(3,3)`, `CV_32F`, `CV_64F`, `CV_16S`, `CV_32S`, `-1`, `filter2D`
+
+Edge detection is mathematically based on derivatives (calculating the rate of change). Derivatives are extremely sensitive to noise.
+
+  * **`blur`, `Size(3,3)`**: Before finding edges, you apply a slight blur to smooth out "static" or noise. `Size(3,3)` creates a $3 \times 3$ averaging or Gaussian kernel.
+  * **`CV_16S`, `CV_32F`, `CV_64F`**: These are **Data Depths**.
+      * *Crucial Logic:* A standard image is `uint8` (0 to 255). However, an edge is a change in brightness. Going from White $\rightarrow$ Black is a **negative slope**.
+      * If you calculate this on a `uint8` image, negative numbers become zero (or wrap around), and you lose half your edges.
+      * **The Fix:** You must convert the image to a Signed Integer (`CV_16S`) or Float (`CV_64F`) so it can hold negative numbers during the calculation.
+  * **`filter2D`**: The generic function to convolve any kernel with an image.
+  * **`-1`**: A flag often used in `filter2D` meaning "keep the output depth the same as the input depth."
+
+-----
+
+### Phase 3: The Edge Detectors (The "Algorithm" phase)
+
+**Keywords:** `Sobel`, `1 0`, `0 1`, `getDerivKernels`, `convertTo`, `Canny`, `bitwise_not`
+
+This is where the actual detection happens.
+
+#### The "1 0, 0 1" Logic (Sobel)
+
+You were spot on about the order mattering. The `Sobel` function signature usually looks like this:
+`Sobel(src, ddepth, dx, dy, ksize)`
+
+  * **`1 0` (dx=1, dy=0)**: This calculates the **First Derivative in X**. It finds vertical edges (changes moving left-to-right).
+  * **`0 1` (dx=0, dy=1)**: This calculates the **First Derivative in Y**. It finds horizontal edges (changes moving top-to-bottom).
+
+You typically calculate these separately and then blend them to find edges in all directions.
+
+  * **`getDerivKernels`**: If you don't want to use the automated `Sobel` function, this returns the raw math matrices so you can pass them into `filter2D` manually.
+  * **`convertTo`**: After the math is done (in `CV_16S` or `CV_64F`), you use this to scale the absolute values back down to `uint8` (0-255) so you can actually display the image on screen.
+  * **`Canny`**: The "Boss Level" function. It combines blurring, Sobel (magnitude and direction), and "non-maximum suppression" (thinning lines) into one single function call.
+  * **`bitwise_not`**: This simply inverts the colors. Edge detection usually results in white lines on black. If you want it to look like a sketch (black lines on white), you use `bitwise_not`.
+
+-----
+
+### Summary Code Snippet
+
+Here is how those specific keywords would look in a C++ lab environment:
+
+```cpp
+// Phase 1: Setup
+Mat src = imread("image.jpg");
+Mat gray;
+cvtColor(src, gray, COLOR_BGR2GRAY); // Convert to gray
+
+// Phase 2: Blur
+Mat blurred;
+blur(gray, blurred, Size(3,3)); // Remove noise
+
+// Phase 3: Sobel (The 1 0, 0 1 part)
+Mat grad_x, grad_y;
+// Calculate Vertical Edges (dx=1, dy=0). Note the CV_16S depth!
+Sobel(blurred, grad_x, CV_16S, 1, 0, 3); 
+
+// Calculate Horizontal Edges (dx=0, dy=1)
+Sobel(blurred, grad_y, CV_16S, 0, 1, 3);
+
+// Phase 4: Convert back to viewable image
+Mat abs_grad_x, abs_grad_y;
+convertScaleAbs(grad_x, abs_grad_x); // convertTo logic
+convertScaleAbs(grad_y, abs_grad_y); 
+
+// Invert for "Sketch" look
+Mat inverted;
+bitwise_not(abs_grad_x, inverted);
+```
+
+**Would you like me to explain the math behind why `1 0` detects vertical lines but ignores horizontal ones?**

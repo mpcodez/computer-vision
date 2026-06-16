@@ -1,0 +1,292 @@
+#include <iostream>
+#include <fstream>
+#include <opencv2/opencv.hpp>
+using namespace std;
+using namespace cv;
+
+// BLUE, GREEN, RED --> 0, 1, 2 --> blue = img[100,100,0]
+
+float distance(int b, int g, int r, Vec3b split) {
+      return sqrt(pow((float)b - (float)split[0], 2) + pow((float)g - (float)split[1], 2) + pow((float)r - (float)split[2], 2));
+}
+
+void drawSquare(Mat format, int r, int c, Vec3b color){
+    for(int row = r; row < r+100; row++){
+        for(int col = c; col < c+100; col++){
+            format.at<Vec3b>(row, col)[0] = color[0];
+            format.at<Vec3b>(row, col)[1] = color[1];
+            format.at<Vec3b>(row, col)[2] = color[2];
+            
+            if(row == r || row == r + 100 || col == c || col == c + 100){
+                format.at<Vec3b>(row, col)[0] = 0;
+                format.at<Vec3b>(row, col)[1] = 0;
+                format.at<Vec3b>(row, col)[2] = 0;
+            }
+        }
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    string pictures[] = {"aloha", "bluefin_trevally", "chameleon", "cheetah", "chess", "crab_spider", "peppers", "peru", "seahorse"};
+
+    for(int picture = 0; picture < 9; picture++)
+    {
+        Mat img = imread("pictures/" + pictures[picture] + ".png");
+        
+        cout << pictures[picture] << endl;
+        
+        
+        vector<Vec3b> splits; //k = whatever
+        splits.push_back(Vec3b(64, 64, 64));
+        splits.push_back(Vec3b(128, 128, 128));
+        splits.push_back(Vec3b(192, 192, 192));
+        
+        vector<Vec3b> prev; //k = whatever
+        prev.push_back(Vec3b(64, 64, 64));
+        prev.push_back(Vec3b(128, 128, 128));
+        prev.push_back(Vec3b(192, 192, 192));
+
+        vector<Vec3b> comp; //k = whatever
+        comp.push_back(Vec3b(64, 64, 64));
+        comp.push_back(Vec3b(128, 128, 128));
+        comp.push_back(Vec3b(192, 192, 192));
+        
+        
+        int COUNTME = 0;
+        int round = 0;
+        
+        int group[img.rows][img.cols];
+        int moves[6] = {0, 0, 0, 0, 0, 0};
+                
+        /*
+        0 ==> 0 to 1
+        1 ==> 1 to 2
+        2 ==> 0 to 2
+        3 ==> 1 to 0
+        4 ==> 2 to 1
+        5 ==> 2 to 0
+        */
+
+        for(int r = 0; r < img.rows; r++){
+            for(int c = 0; c < img.cols; c++){
+                group[r][c] = -1;
+            }
+        }
+        vector<vector<array<long long,3>>> moveSumsByRound;
+        vector<vector<int>> moveCountsByRound;
+         
+        while(true){
+            
+            round += 1;
+            
+            float sum[splits.size()][3] = {0.0};
+            // x is the SPLIT and y is the COLOR
+
+            float count[splits.size()] = {0.0};
+            // how many points fall under each section?
+
+            vector<array<long long,3>> moveSums(6);
+            for(int m = 0; m < 6; m++){
+                moveSums[m] = {0LL, 0LL, 0LL};
+            }
+            vector<int> moveCounts(6, 0);
+                        
+            for(int r = 0; r < img.rows; r++){
+                for(int c = 0; c < img.cols; c++){
+                    
+                    int blue = img.at<Vec3b>(r,c)[0];
+                    int green = img.at<Vec3b>(r,c)[1];
+                    int red = img.at<Vec3b>(r,c)[2];
+                                        
+                    int whichSplit = 0;
+                    float bestDist = distance(blue, green, red, splits[0]);
+
+                    for(int split = 1; split < splits.size(); split++){
+                        float d = distance(blue, green, red, splits[split]);
+                        
+                        if(d < bestDist){
+                            bestDist = d;
+                            whichSplit = split;
+                        }
+                    }
+
+                    sum[whichSplit][0] += blue;
+                    sum[whichSplit][1] += green;
+                    sum[whichSplit][2] += red;
+                    count[whichSplit]++;
+                    
+                    int prevSplit = group[r][c];
+                    if(prevSplit != whichSplit && prevSplit != -1){
+                        if(prevSplit == 0){
+                            if(whichSplit == 1){
+                                moves[0] += 1;
+                                moveCounts[0] += 1;
+                                moveSums[0][0] += blue;
+                                moveSums[0][1] += green;
+                                moveSums[0][2] += red;
+                            }
+                            if(whichSplit == 2){
+                                moves[2] += 1;
+                                moveCounts[2] += 1;
+                                moveSums[2][0] += blue;
+                                moveSums[2][1] += green;
+                                moveSums[2][2] += red;
+                            }
+                        }
+                        if(prevSplit == 1){
+                            if(whichSplit == 0){
+                                moves[3] += 1;
+                                moveCounts[3] += 1;
+                                moveSums[3][0] += blue;
+                                moveSums[3][1] += green;
+                                moveSums[3][2] += red;
+                            }
+                            if(whichSplit == 2){
+                                moves[1] += 1;
+                                moveCounts[1] += 1;
+                                moveSums[1][0] += blue;
+                                moveSums[1][1] += green;
+                                moveSums[1][2] += red;
+                            }
+                        }
+                        if(prevSplit == 2){
+                            if(whichSplit == 0){
+                                moves[5] += 1;
+                                moveCounts[5] += 1;
+                                moveSums[5][0] += blue;
+                                moveSums[5][1] += green;
+                                moveSums[5][2] += red;
+                            }
+                            if(whichSplit == 1){
+                                moves[4] += 1;
+                                moveCounts[4] += 1;
+                                moveSums[4][0] += blue;
+                                moveSums[4][1] += green;
+                                moveSums[4][2] += red;
+                            }
+                        }
+                    }
+                    
+                    group[r][c] = whichSplit;
+                    
+
+                }
+            }
+
+            moveSumsByRound.push_back(moveSums);
+            moveCountsByRound.push_back(moveCounts);
+            
+            for(int s = 0; s < splits.size(); s++){
+                Vec3f mean1 = sum[s][0]/(1.0*count[s]);
+                Vec3f mean2 = sum[s][1]/(1.0*count[s]);
+                Vec3f mean3 = sum[s][2]/(1.0*count[s]);
+                splits[s] = Vec3b((int)mean1[0], (int)mean2[0], (int)mean3[0]);
+            }
+            
+            
+            for(int split = 0; split < splits.size(); split++){
+                prev.push_back(splits[split]);
+            }
+            
+            int breakNow = 1;
+            
+            for(int split = 1; split < splits.size(); split++){
+                if(comp[split] == splits[split]){
+                    breakNow *= 1;
+                }else{
+                    breakNow *= 0;
+                }
+            }
+            
+            if(breakNow == 1){
+                break;
+            }else{
+               comp = splits;
+               COUNTME += 1;
+            }
+
+        }
+                
+        int maxVal = 0;
+        int max = 0;
+            
+        for(int g = 0; g < 6; g++){
+            if(moves[g] > maxVal){
+                maxVal = moves[g];
+                max = g;
+            }
+        }
+        
+        /*
+        0 ==> 0 to 1
+        1 ==> 1 to 2
+        2 ==> 0 to 2
+        3 ==> 1 to 0
+        4 ==> 2 to 1
+        5 ==> 2 to 0
+        */
+        
+        int from = 0;
+        int to = 0;
+        
+        if(max == 0){
+            from = 0;
+            to = 1;
+        }else if(max == 1){
+            from = 1;
+            to = 2;
+        }else if(max == 2){
+            from = 0;
+            to = 2;
+        }else if(max == 3){
+            from = 1;
+            to = 0;
+        }else if(max == 4){
+            from = 2;
+            to = 1;
+        }else if(max == 5){
+            from = 2;
+            to = 0;
+        }
+        
+        Mat format = imread("pictures/template.png");
+        
+        int roundsRecorded = (int)moveSumsByRound.size();
+        for(int trial = 0; trial < 8; trial++){
+            Vec3b fromColor = prev[(3*trial)+from];
+            Vec3b midColor = Vec3b(128,128,128);
+            Vec3b toColor = prev[(3*trial)+to];
+            
+            int cnt = moveCountsByRound[trial][max];
+            if(cnt > 0){
+                long long sumB = moveSumsByRound[trial][max][0];
+                long long sumG = moveSumsByRound[trial][max][1];
+                long long sumR = moveSumsByRound[trial][max][2];
+                int avgB = (int)(sumB / cnt);
+                int avgG = (int)(sumG / cnt);
+                int avgR = (int)(sumR / cnt);
+                midColor = Vec3b(avgB, avgG, avgR);
+            }else{
+                int base = (3 * trial);
+                if(base + from >= 0 && base + from < (int)prev.size() && base + to >= 0 && base + to < (int)prev.size()){
+                    Vec3b fromCol = prev[base + from];
+                    Vec3b toCol = prev[base + to];
+                    midColor = Vec3b((fromCol[0] + toCol[0]) / 2, (fromCol[1] + toCol[1]) / 2, (fromCol[2] + toCol[2]) / 2);
+                }else{
+                    midColor = Vec3b(128,128,128);
+                }
+            }
+            
+            drawSquare(format, 0, trial*100, fromColor);
+            drawSquare(format, 100, trial*100, midColor);
+            drawSquare(format, 200, trial*100, toColor);
+        }
+        cout << "Total Steps: " << COUNTME << endl;
+        cout << prev[prev.size()-3 + from] << "<== Moved from" << endl;
+        cout << prev[prev.size()-3 + to] << "<== Moved to" << endl;
+        imwrite("challenge2/" + string(pictures[picture]) + ".png", format);
+    }
+
+    return 0;
+}

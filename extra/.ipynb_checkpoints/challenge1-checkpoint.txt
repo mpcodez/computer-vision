@@ -1,0 +1,52 @@
+#include <iostream>
+#include <fstream>
+#include <opencv2/opencv.hpp>
+using namespace std;
+using namespace cv;
+
+void save(uchar img[][807], int num) ;
+
+int main(int argc, char* argv[])
+{
+    uchar    img[729][807] ;
+
+    Mat img1 = imread("panels/1.png");
+    cvtColor(img1, img1, COLOR_BGR2GRAY);
+
+    Mat img2 = imread("panels/2.png");
+    cvtColor(img2, img2, COLOR_BGR2GRAY);
+
+    Mat img3 = imread("panels/3.png");
+    cvtColor(img3, img3, COLOR_BGR2GRAY);
+
+    
+    cout << img1.rows << endl;
+    cout << img1.cols << endl;
+    
+    
+    ofstream fout          ;
+    //
+    //
+    fout.open( "demo.pgm" ) ;
+
+    //
+    fout << "P6" << endl ;
+    //
+    
+    fout << "807 729" << endl << "255" << endl ;
+    //
+    for( int r = 0 ; r < 729 ; r++ )
+    {
+        for( int c = 0 ; c < 807 ; c++ )
+        {
+            fout << (uchar) img3.at<uchar>(r, c) << (uchar) img2.at<uchar>(r, c) << (uchar) img1.at<uchar>(r, c) << flush;
+        }
+    }
+    //
+    fout . close() ;
+    
+    return 0;
+}
+//
+// end
+//

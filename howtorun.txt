@@ -1,0 +1,6 @@
+cmake .
+make
+./run_me
+cp opencv_demo.cpp current_file.cpp
+make
+./run_me

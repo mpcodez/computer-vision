@@ -1,0 +1,121 @@
+//
+#include <fstream>
+//
+using namespace std ;
+//
+typedef unsigned char uchar ;
+//
+const int W = 480 ;
+const int H = 480 ;
+//
+void save( uchar img[][512] ) ;
+//
+int main( int argc , char* argv[] )
+{
+    
+    ifstream fin       ;
+    //
+    int      r , c     ;
+    //
+    string   s         ;
+    char     ch        ;
+    //
+    uchar    tea[H][W] ;
+    //
+    //
+    //
+    fin . open( "teapot.pgm" ) ;
+    //
+    fin >> s ; // P5
+    fin >> s ; // 775
+    fin >> s ; // 900
+    fin >> s ; // 255
+    //
+    // fin >> ch ; // would skip the newline
+    //
+    fin.read( &ch , 1 ) ; // reads newline
+    //
+    for( r = 0 ; r < H ; r++ )
+    {
+        for( c = 0 ; c < W ; c++ )
+        {
+            fin . read( &ch , 1 ) ;
+            //
+            tea[r][c] = (uchar)ch ;
+        }
+    }
+    //
+    fin.close() ;
+    //
+    
+    uchar teapot[240][240];
+    
+    for( r = 0 ; r < 240 ; r=r+1 )
+    {
+        for( c = 0 ; c < 240 ; c=c+1 )
+        {
+            teapot[r][c] = (uchar) tea[r*2][c*2];
+        }
+    }
+    
+    uchar img[512][512];
+
+    
+    for( int r = 0 ; r < 512 ; r++ )
+    {
+        for( int c = 0 ; c < 512 ; c++ )
+        {
+            img[r][c] = 255-(uchar)(int)(r/2);
+        }
+    }
+    
+    for( int r = 264 ; r < 504 ; r++ )
+    {
+        for( int c = 8 ; c < 248 ; c++ )
+        {
+            if(teapot[r-264][c-8] == 0){
+                img[r][c] = teapot[r-264][c-8];
+            }
+        }
+    }
+    
+    for( int r = 8 ; r < 248 ; r++ )
+    {
+        for( int c = 264 ; c < 504 ; c++ )
+        {
+            if(teapot[r-8][c-264] == 0){
+                img[r][c] = teapot[r-264][c-8];
+            }
+        }
+    }
+
+    //
+    save( img ) ;
+    //
+    return 0 ;
+}
+//
+void save( uchar img[][512] )
+{
+    //
+    ofstream fout          ;
+    //
+    //
+    fout . open( "demo.pgm" ) ;
+    //
+    fout << "P5" << endl ;
+    //
+    fout << "512 512" << endl << "255" << endl ;
+    //
+    for( int r = 0 ; r < 512 ; r++ )
+    {
+        for( int c = 0 ; c < 512 ; c++ )
+        {
+            fout << img[r][c] << flush ;
+            //
+            //               NOT endl !!!
+        }
+    }
+    //
+    fout . close() ;
+}

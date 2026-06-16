@@ -1,0 +1,64 @@
+//
+#include <fstream>
+//
+using namespace std ;
+//
+typedef unsigned char uchar ;
+//
+//
+void save( uchar img[][640] ) ;
+//
+//
+int main( int argc , char* argv[] )
+{
+    //
+    uchar    img[480][640] ;
+    //
+    //
+    for( int c = 0 ; c < 640 ; c++ )
+    {
+        for( int r = 0 ; r < 480 ; r++ )
+        {
+            if( r % 2 == 0 && c % 2 == 0 )
+            {
+                img[r][c] = (uchar)0   ;
+            }
+            else
+            {
+                img[r][c] = (uchar)255 ;
+            }
+        }
+    }
+    //
+    save( img ) ;
+    //
+    return 0 ;
+}
+//
+void save( uchar img[][640] )
+{
+    //
+    ofstream fout          ;
+    //
+    //
+    fout . open( "demo.pgm" ) ;
+    //
+    fout << "P5" << endl ;
+    //
+    fout << "640 480" << endl << "255" << endl ;
+    //
+    for( int r = 0 ; r < 480 ; r++ )
+    {
+        for( int c = 0 ; c < 640 ; c++ )
+        {
+            fout << img[r][c] << flush ;
+            //
+            //               NOT endl !!!
+        }
+    }
+    //
+    fout . close() ;
+}
+//
+// end
+//

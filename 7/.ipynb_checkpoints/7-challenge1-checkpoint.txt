@@ -1,0 +1,84 @@
+#include <iostream>
+#include <fstream>
+#include <cmath>
+#include <vector>
+#include <string>
+#include <filesystem>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+namespace fs = std::filesystem;
+
+int main(int argc, char* argv[]) {
+    string pictures[] = {"aloha", "bluefin_trevally", "chameleon", "cheetah",
+                         "chess", "crab_spider", "peppers", "peru", "seahorse"};
+
+    double threshold = 100.0;
+
+    for (int i = 0; i < 9; i++) {
+        Mat temp = imread("pictures/" + pictures[i] + ".png", IMREAD_COLOR);
+
+        cout << pictures[i] << endl;
+
+        Mat gray;
+        cvtColor(temp, gray, COLOR_BGR2GRAY);
+
+        Mat color_img;
+        cvtColor(gray, color_img, COLOR_GRAY2BGR);
+
+        Mat Gx_mat = Mat::zeros(gray.size(), CV_32F);
+        Mat Gy_mat = Mat::zeros(gray.size(), CV_32F);
+        Mat mag_mat = Mat::zeros(gray.size(), CV_32F);
+
+        for (int r = 1; r < gray.rows - 1; r++) {
+            for (int c = 1; c < gray.cols - 1; c++) {
+                int n1 = gray.at<uchar>(r - 1, c - 1);
+                int n2 = gray.at<uchar>(r - 1, c);
+                int n3 = gray.at<uchar>(r - 1, c + 1);
+                int n4 = gray.at<uchar>(r, c - 1);
+                int n5 = gray.at<uchar>(r, c + 1);
+                int n6 = gray.at<uchar>(r + 1, c - 1);
+                int n7 = gray.at<uchar>(r + 1, c);
+                int n8 = gray.at<uchar>(r + 1, c + 1);
+
+                int Gx = (n3 + (2 * n5) + n8) - (n1 + (2 * n4) + n6);
+                int Gy = (n6 + (2 * n7) + n8) - (n1 + (2 * n2) + n3);
+                int G = abs(Gx) + abs(Gy);
+                
+                if (G > 40) {
+
+                    double angle = atan2((double)Gy, (double)Gx) * 180.0 / M_PI;
+                    if (angle < 0) angle += 180.0;
+    
+                    float neighbor1 = 0.0f;
+                    float neighbor2 = 0.0f;
+    
+                    if ((angle >= 0.0 && angle < 22.5) || (angle >= 157.5 && angle < 180.0)) {
+                        neighbor1 = n4;
+                        neighbor2 = n5;
+                    } else if (angle >= 22.5 && angle < 67.5) {
+                        neighbor1 = n1;
+                        neighbor2 = n8;
+                    } else if (angle >= 67.5 && angle < 112.5) {
+                        neighbor1 = n2;
+                        neighbor2 = n7;
+                    } else {
+                        neighbor1 = n3;
+                        neighbor2 = n6;
+                    }
+    
+                    if (threshold < neighbor1 && threshold < neighbor2) {
+                        color_img.at<Vec3b>(r, c)[0] = 0;
+                        color_img.at<Vec3b>(r, c)[1] = 0;
+                        color_img.at<Vec3b>(r, c)[2] = 255;
+                    }
+                }
+            }
+        }
+
+        imwrite("challenge1/" + pictures[i] + ".png", color_img);
+    }
+
+    return 0;
+}
